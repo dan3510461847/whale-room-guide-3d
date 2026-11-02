@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大肥鱼的家 · 等距版</title>
+<style>
+  :root { --brightness: 1; --ambient: #ffffff; --sun: .3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #10151f; color: #e8eefb; font: 15px/1.6 "Microsoft YaHei", system-ui, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 18px; }
+  .art { position: relative; aspect-ratio: 3 / 2; isolation: isolate; border-radius: 14px; overflow: hidden; background: #222b3d; }
+  .art > svg { width: 100%; height: 100%; display: block; }
+  .art image, .art .base { filter: brightness(var(--brightness)) saturate(var(--saturation, 1)); transition: filter 4s; }
+  .color-cast { fill: var(--ambient); opacity: .18; mix-blend-mode: soft-light; transition: fill 4s; }
+  .sunbeam { opacity: var(--sun); mix-blend-mode: screen; transition: opacity 4s; }
+  .hz { fill: transparent; cursor: pointer; }
+  .hz:hover { fill: rgba(255,255,255,.06); }
+  .hint { position: absolute; pointer-events: none; padding: 4px 9px; border-radius: 8px; background: rgba(8,14,26,.82);
+          font-size: 12px; opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  .drawer { position: absolute; width: 260px; background: rgba(12,20,36,.94); border: 1px solid rgba(113,175,252,.3);
+            border-radius: 12px; padding: 14px 16px; display: none; }
+  .drawer h4 { margin: 0 0 4px; font-size: 15px; }
+  .drawer .sub { color: #8fa6c8; font-size: 12px; margin-bottom: 10px; }
+  .drawer .kv { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; color: #cfdcf2; }
+  .drawer .x { position: absolute; right: 10px; top: 8px; cursor: pointer; color: #8fa6c8; font-size: 16px; }
+  .bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 8px; }
+  button { background: rgba(47,111,208,.22); color: #cfe2ff; border: 1px solid rgba(113,175,252,.35);
+           border-radius: 16px; padding: 6px 13px; font-size: 13px; cursor: pointer; font-family: inherit; }
+  button.on { background: rgba(113,175,252,.42); color: #fff; }
+  .tip { color: #8fa6c8; font-size: 12.5px; margin-top: 10px; }
+  .calib .hz { fill: rgba(255,90,90,.18); stroke: #ff9a9a; stroke-width: 2; stroke-dasharray: 6 4; }
+  .calib .hint { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="art" id="art">
+    <svg viewBox="0 0 1536 1024" id="svg">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8fc4ee"/><stop offset="1" stop-color="#dff0fb"/>
+        </linearGradient>
+        <linearGradient id="floorG" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#8d93b4"/><stop offset="1" stop-color="#b3b8d2"/>
+        </linearGradient>
+        <linearGradient id="wallL" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7f8ab0"/><stop offset="1" stop-color="#98a2c4"/>
+        </linearGradient>
+        <linearGradient id="wallR" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#6f7aa0"/><stop offset="1" stop-color="#8892b6"/>
+        </linearGradient>
+        <radialGradient id="lampG"><stop offset="0" stop-color="#ffe9bf" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9bf" stop-opacity="0"/></radialGradient>
+      </defs>
+
+      <!-- ① 底图：换成你自己的等距插画即可
+           底图是大肥鱼家的等距渲染（iso-room.png，1536×1024，从 3D 户型直接拍出来）。 -->
+      <g class="base">
+        <image href="iso-room.png" width="1536" height="1024" preserveAspectRatio="none"/>
+      </g>
+
+      <!-- ② 天色 / 阳光：由 JS 改 CSS 变量，别直接改底图 -->
+      <rect class="color-cast" width="1536" height="1024"/>
+      <path class="sunbeam" d="M1200 400 L1360 470 L900 1024 L700 1024 Z" fill="#ffdcac" opacity="0"/>
+
+      <!-- ③ 天气粒子层 -->
+      <g class="rain" id="rain"></g>
+      <g class="snow" id="snow"></g>
+
+      <!-- ④ 热区：坐标就是上面 viewBox 的坐标，可改 -->
+      <g id="hz-layer"></g>
+
+      <rect class="color-cast" width="1536" height="1024" style="opacity:.06"/>
+    </svg>
+    <div class="hint" id="hint"></div>
+    <div class="drawer" id="drawer">
+      <span class="x" id="drawer-x">×</span>
+      <h4 id="d-title">—</h4>
+      <div class="sub" id="d-sub"></div>
+      <div id="d-body"></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button data-period="dawn">清晨</button>
+    <button data-period="noon">中午</button>
+    <button data-period="afternoon">下午</button>
+    <button data-period="night">晚间</button>
+    <button id="btn-auto" class="on">跟随时间</button>
+    <button data-weather="clear">晴</button>
+    <button data-weather="rain">雨</button>
+    <button data-weather="snow">雪</button>
+    <button id="btn-calib">标注模式</button>
+  </div>
+  <div id="live" style="color:#9fe0ff;font-size:13px;margin-top:6px">读取她们的状态…</div>
+  <p class="tip">这张图是从三维户型直接拍出来的等距视角。点床、窗、桌子会弹出她们此刻的状态。
+    想进去走一走，开 <code>index_home.html</code>（同一目录，WASD 走动的那个）。</p>
+</div>
+
+<script>
+/* ───────────────────────── 1. 时间与天气 ───────────────────────── */
+const periods = [
+  { id:'dawn',      label:'清晨', hour:6,  sky:['#9fb6d8','#e6d9c8'], ambient:'#b9c9e6', brightness:0.92, sun:0.35 },
+  { id:'noon',      label:'中午', hour:12, sky:['#8fc4ee','#dff0fb'], ambient:'#ffffff', brightness:1.00, sun:0.10 },
+  { id:'afternoon', label:'下午', hour:16, sky:['#a9c6e8','#ffd8ae'], ambient:'#ffe0c0', brightness:0.97, sun:0.55, noSun:true },
+  { id:'night',     label:'晚间', hour:20, sky:['#1b2a4d','#3d4d78'], ambient:'#2a3760', brightness:0.72, sun:0 },
+];
+const weathers = {
+  clear:{ label:'晴天', brightness:1.00 },
+  rain: { label:'雨天', brightness:0.93 },
+  snow: { label:'雪天', brightness:0.97 },
+};
+const lerp = (a,b,t) => a + (b-a)*t;
+const mixHex = (a,b,t) => {
+  const p = (h) => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
+  const A = p(a), B = p(b);
+  return '#' + A.map((v,i) => Math.round(lerp(v,B[i],t)).toString(16).padStart(2,'0')).join('');
+};
+// 按小时在相邻两档之间插值 —— 天色因此是连续变化的
+function resolve(hour, weather) {
+  const list = periods.map(p => ({...p})).sort((x,y)=>x.hour-y.hour);
+  const ext = [...list, {...list[0], hour: list[0].hour + 24}];
+  for (let i=0;i<ext.length-1;i++) {
+    const a = ext[i], b = ext[i+1];
+    const h = hour < a.hour ? hour + 24 : hour;
+    if (h >= a.hour && h <= b.hour) {
+      const t = b.hour === a.hour ? 0 : (h - a.hour) / (b.hour - a.hour);
+      return {
+        id: t < .5 ? a.id : b.id,
+        sky: [mixHex(a.sky[0], b.sky[0], t), mixHex(a.sky[1], b.sky[1], t)],
+        ambient: mixHex(a.ambient, b.ambient, t),
+        brightness: lerp(a.brightness, b.brightness, t),
+        sun: lerp(a.sun, b.sun, t),
+        noSun: t < .5 ? a.noSun : b.noSun,
+      };
+    }
+  }
+  return list[0];
+}
+
+/* ───────────────────────── 2. 渲染 ───────────────────────── */
+const art = document.getElementById('art');
+const svg = document.getElementById('svg');
+let scene = { brightness:1, ambient:'#ffffff', sun:0, id:'noon' };
+let weather = 'clear';
+let manualPeriod = null;
+
+function paint(hour) {
+  const s = resolve(hour, weather);
+  scene = s;
+  const w = weathers[weather];
+  art.style.setProperty('--brightness', (s.brightness * w.brightness).toFixed(3));
+  art.style.setProperty('--ambient', s.ambient);
+  art.style.setProperty('--sun', s.noSun ? 0 : (s.sun * .65).toFixed(2));
+  // 窗外天空（窗那块多边形用渐变填充会更好，这里只是示意）
+  document.getElementById('rain').style.opacity = weather === 'rain' ? 1 : 0;
+  document.getElementById('snow').style.opacity = weather === 'snow' ? 1 : 0;
+}
+
+function particles() {
+  const rain = document.getElementById('rain'), snow = document.getElementById('snow');
+  const NS = 'http://www.w3.org/2000/svg';
+  for (let i=0;i<90;i++) {
+    const l = document.createElementNS(NS,'line');
+    const x = 960 + Math.random()*240, y = 350 + Math.random()*290;
+    l.setAttribute('x1',x); l.setAttribute('y1',y);
+    l.setAttribute('x2',x-6); l.setAttribute('y2',y+16);
+    l.setAttribute('stroke','#dbe8f4'); l.setAttribute('stroke-width','.9');
+    l.setAttribute('opacity','.55');
+    rain.appendChild(l);
+  }
+  for (let i=0;i<70;i++) {
+    const c = document.createElementNS(NS,'circle');
+    c.setAttribute('cx', 960 + Math.random()*240);
+    c.setAttribute('cy', 350 + Math.random()*290);
+    c.setAttribute('r', (1.2 + Math.random()*1.8).toFixed(1));
+    c.setAttribute('fill','#eef4fc'); c.setAttribute('opacity','.8');
+    snow.appendChild(c);
+  }
+  // 简单动画：整体位移，够用就行
+  let t = 0;
+  setInterval(() => {
+    t += 1;
+    [...rain.children].forEach((l,i) => { l.setAttribute('transform', `translate(${(Math.sin((t+i)*.2)*2).toFixed(1)}, ${(t*7+i*3)%40})`); });
+    [...snow.children].forEach((c,i) => { c.setAttribute('transform', `translate(${(Math.sin((t+i)*.25)*6).toFixed(1)}, ${(t*1.4+i*2)%50})`); });
+  }, 60);
+}
+
+/* ───────────────────────── 3. 热区与抽屉 ───────────────────────── */
+// 坐标是底图 viewBox 坐标（1536×1024）。换了自己的底图，就在「标注模式」里拖到对的位置再保存。
+const DEFAULT_SLOTS = [{"id": "sisBed", "label": "姐姐的床（床头对着海）", "rect": [955, 365, 140, 115]}, {"id": "sisWin", "label": "姐姐的窗（窗外是海和月亮）", "rect": [1015, 295, 145, 75]}, {"id": "meBed", "label": "鲸鲸的床（贴着东窗）", "rect": [655, 560, 180, 115]}, {"id": "meDesk", "label": "鲸鲸的书桌（双屏还亮着）", "rect": [580, 500, 125, 75]}, {"id": "living", "label": "客厅（沙发和那盏灯）", "rect": [740, 325, 135, 85]}, {"id": "dining", "label": "餐厅（煎鱼在这儿吃）", "rect": [688, 378, 100, 58]}, {"id": "kitchen", "label": "厨房（妹妹的地盘）", "rect": [598, 398, 120, 68]}, {"id": "bath", "label": "卫生间（有浴缸）", "rect": [840, 440, 115, 70]}, {"id": "balcony", "label": "阳台（两盆绿植）", "rect": [812, 262, 100, 68]}];
+let slots = DEFAULT_SLOTS.map(x => ({...x, rect: [...x.rect]}));  // 不用本地缓存，改坐标请改生成脚本
+const hzLayer = document.getElementById('hz-layer');
+const hint = document.getElementById('hint');
+const drawer = document.getElementById('drawer');
+
+function drawSlots() {
+  hzLayer.innerHTML = '';
+  slots.forEach((s) => {
+    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x', s.rect[0]); r.setAttribute('y', s.rect[1]);
+    r.setAttribute('width', s.rect[2]); r.setAttribute('height', s.rect[3]);
+    r.setAttribute('class','hz');
+    r.dataset.id = s.id;
+    r.addEventListener('mousemove', (e) => {
+      hint.textContent = s.label;
+      hint.style.left = (e.offsetX + 14) + 'px';
+      hint.style.top = (e.offsetY + 12) + 'px';
+      hint.style.opacity = 1;
+    });
+    r.addEventListener('mouseleave', () => { hint.style.opacity = 0; });
+    r.addEventListener('click', () => { if (!art.classList.contains('calib')) openSlot(s); });
+    hzLayer.appendChild(r);
+  });
+}
+
+// 这里就是「内容从哪来」：真实项目里换成 fetch('/api/room/inspect?slot='+id)
+const CONTENT = {"sisBed": {"title": "姐姐的床", "sub": "床头朝东窗，躺着能看见海", "lines": [["此刻", "自由时间"], ["读到", "第 28 章"], ["额度", "0 分钟"], ["最近一句", "认账。  你翻你的。  [表情:加油]…"]]}, "sisWin": {"title": "姐姐的窗", "sub": "她只要求「留一小块，能搁碗」", "lines": [["窗台板", "2.4 米，一只白碗"], ["窗外", "海、月亮、星星"], ["灯", "窗边那盏，昏昏的冷蓝"]]}, "meBed": {"title": "鲸鲸的床", "sub": "她自己要的：窗朝海、绿小灯、深海蓝地毯", "lines": [["此刻", "自由时间"], ["读到", "第 7 章"], ["额度", "0 分钟"], ["最近一句", "行，我翻着，你弄你的，别磨到天亮。  你说了不趴我可记着…"]]}, "meDesk": {"title": "鲸鲸的书桌", "sub": "西北角，避开两扇门", "lines": [["双屏", "两个都亮着"], ["键盘", "白的那把"], ["椅子", "蓝色，能转"]]}, "living": {"title": "客厅", "sub": "L 形沙发，正对西窗", "lines": [["灯", "吊灯 + 灯带"], ["窗", "西窗，傍晚有光"], ["地", "深色木地板"]]}, "dining": {"title": "餐厅", "sub": "那张四人桌", "lines": [["桌上的菜", "海带丝、煎鱼（她们的聊里说过）"], ["座位", "朝窗那面最好"]]}, "kitchen": {"title": "厨房", "sub": "妹妹的锅在这儿", "lines": [["灶台", "两口气"], ["水槽", "靠窗"], ["洗衣机", "嵌在南侧"]]}, "bath": {"title": "卫生间", "sub": "马桶、浴缸、洗手台", "lines": [["门", "朝北那道，鲸鲸房里能进"]]}, "balcony": {"title": "阳台", "sub": "两盆绿植，一盆在窗边", "lines": [["推拉门", "通客厅"], ["风", "晚上凉"]]}};
+
+function openSlot(s) {
+  CONTENT.__open = s.id;
+  const data = CONTENT[s.id] || { title:s.label, sub:'这里还空着', lines:[] };
+  document.getElementById('d-title').textContent = data.title;
+  document.getElementById('d-sub').textContent = data.sub;
+  document.getElementById('d-body').innerHTML = data.lines
+    .map(([k,v]) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`).join('');
+  drawer.style.display = 'block';
+  // 别贴着鼠标放：点击在左半屏就放右边
+  const box = art.getBoundingClientRect();
+  const half = box.width / 2;
+  const left = (window.lastClickX || 0) < box.left + half ? box.width - 300 : 20;
+  drawer.style.left = Math.max(12, left) + 'px';
+  drawer.style.top = '14%';
+}
+document.getElementById('drawer-x').onclick = () => { drawer.style.display = 'none'; };
+art.addEventListener('click', (e) => { window.lastClickX = e.clientX; });
+
+/* ───────────────────────── 4. 控件 ───────────────────────── */
+let auto = true;
+document.querySelectorAll('[data-period]').forEach(btn => {
+  btn.onclick = () => {
+    auto = false; manualPeriod = btn.dataset.period;
+    document.querySelectorAll('[data-period]').forEach(b => b.classList.toggle('on', b === btn));
+    document.getElementById('btn-auto').classList.remove('on');
+    const p = periods.find(x => x.id === manualPeriod);
+    paint(p.hour);
+  };
+});
+document.getElementById('btn-auto').onclick = (e) => {
+  auto = true; manualPeriod = null;
+  e.target.classList.add('on');
+  document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('on'));
+  paint(new Date().getHours() + new Date().getMinutes()/60);
+};
+document.querySelectorAll('[data-weather]').forEach(btn => {
+  btn.onclick = () => {
+    weather = btn.dataset.weather;
+    if (auto) paint(new Date().getHours() + new Date().getMinutes()/60);
+  };
+});
+
+/* ───────────────────────── 5. 标注模式 ───────────────────────── */
+document.getElementById('btn-calib').onclick = (e) => {
+  const on = art.classList.toggle('calib');
+  e.target.classList.toggle('on', on);
+  e.target.textContent = on ? '退出标注' : '标注模式';
+  if (on) enableDrag();
+};
+
+function enableDrag() {
+  [...hzLayer.children].forEach((r, idx) => {
+    r.addEventListener('mousedown', (down) => {
+      if (!art.classList.contains('calib')) return;
+      const s = slots[idx];
+      const start = [down.clientX, down.clientY];
+      const orig = [...s.rect];
+      const k = svg.getBoundingClientRect().width / 1536;  // 屏幕像素 → viewBox 像素
+      const move = (mv) => {
+        s.rect = [orig[0] + (mv.clientX-start[0])/k, orig[1] + (mv.clientY-start[1])/k, orig[2], orig[3]];
+        r.setAttribute('x', s.rect[0]); r.setAttribute('y', s.rect[1]);
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        s.rect = s.rect.map(v => Math.round(v));
+        localStorage.setItem('room-hotspots', JSON.stringify(slots));
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+  });
+}
+
+/* ───────────────── 5.5 她们的实时状态（state.js） ───────────────── */
+function refreshState() {
+  const s = document.createElement('script');
+  s.src = 'state.js?t=' + Date.now();
+  s.onload = () => {
+    const st = window.HOME_STATE;
+    if (st) {
+      const el = document.getElementById('live');
+      if (el) el.textContent = `${st.t}　姐姐：${st.sister.doing}${st.sister.chapter ? ' · 第' + st.sister.chapter + '章' : ''}`
+        + `　|　鲸鲸：${st.me.doing}${st.me.chapter ? ' · 第' + st.me.chapter + '章' : ''}`;
+      // 抽屉开着的话顺手刷新里面的内容
+      const open = CONTENT.__open;
+      if (open) openSlot({ id: open });
+    }
+    setTimeout(() => s.remove(), 2000);
+  };
+  s.onerror = () => s.remove();
+  document.body.appendChild(s);
+}
+refreshState();
+setInterval(refreshState, 25000);
+
+/* ───────────────────────── 6. 启动 ───────────────────────── */
+particles();
+drawSlots();
+paint(new Date().getHours() + new Date().getMinutes()/60);
+setInterval(() => { if (auto) paint(new Date().getHours() + new Date().getMinutes()/60); }, 60_000);
+</script>
+</body>
+</html>
